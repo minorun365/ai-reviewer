@@ -155,21 +155,40 @@ def sanitize_text(text):
     if not text:
         return text
     
-    # 制御文字を除去
     import re
-    sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
     
-    # 非常に長い行を分割
-    lines = sanitized.split('\n')
+    # 1. エンコーディングエラーの修正
+    try:
+        # UTF-8として正しくデコード・エンコード
+        if isinstance(text, str):
+            text = text.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+    except:
+        pass
+    
+    # 2. 文字化けした日本語を除去
+    # 例: æ¥æ¬, ä¼æ¥­, ãã®ような文字化けパターン
+    text = re.sub(r'[æãäåå¼çµè½ãªãã£ã¼ã³ã¯ãä½ãèª¿ç¤¾ãããä¸åï¼ï¼]+', '', text)
+    
+    # 3. 制御文字を除去
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
+    # 4. 連続する特殊文字を除去
+    text = re.sub(r'[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u002D\u002E\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E]+', ' ', text)
+    
+    # 5. 複数の空白を単一に
+    text = re.sub(r'\s+', ' ', text)
+    
+    # 6. 非常に長い行を分割
+    lines = text.split('\n')
     sanitized_lines = []
     for line in lines:
-        if len(line) > 1000:  # 1000文字を超える行は分割
+        if len(line) > 1000:
             for i in range(0, len(line), 1000):
                 sanitized_lines.append(line[i:i+1000])
         else:
             sanitized_lines.append(line)
     
-    return '\n'.join(sanitized_lines)
+    return '\n'.join(sanitized_lines).strip()
 
 def create_review_prompt(document_text, custom_prompt_template, search_results=""):
     """決裁書レビュー用のプロンプトを作成（サニタイズ付き）"""
