@@ -150,59 +150,51 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
         st.warning(f"関連情報検索エラー: {e}")
         return ""
 
-def sanitize_text(text):
-    """テキストをサニタイズ（問題のある文字を除去）"""
+def sanitize_text_safe_encoding(text):
+    """安全なエンコーディング方式でテキストをサニタイズ"""
     if not text:
         return text
     
+    import base64
     import re
     
-    # 1. エンコーディングエラーの修正
     try:
-        # UTF-8として正しくデコード・エンコード
-        if isinstance(text, str):
-            text = text.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
-    except:
-        pass
-    
-    # 2. より汎用的な文字化け対策
-    # UTF-8文字化けの一般的なパターンを検出・除去
-    # ラテン文字+記号の組み合わせが日本語になっているパターン
-    text = re.sub(r'[^\x00-\x7F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\s\-\.\!\"\#\$\%\&\'\(\)\*\+\,\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]+', ' ', text)
-    
-    # 3. 制御文字を除去
-    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
-    
-    # 4. 意味のない文字列パターンを除去
-    # 3文字以上の意味不明な記号の組み合わせ
-    text = re.sub(r'[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]{3,}', ' ', text)
-    
-    # 5. 単独の意味不明文字を除去
-    text = re.sub(r'\b[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]\b', ' ', text)
-    
-    # 6. 複数の空白を単一に
-    text = re.sub(r'\s+', ' ', text)
-    
-    # 7. 非常に長い行を分割
-    lines = text.split('\n')
-    sanitized_lines = []
-    for line in lines:
-        if len(line) > 1000:
-            for i in range(0, len(line), 1000):
-                sanitized_lines.append(line[i:i+1000])
-        else:
-            sanitized_lines.append(line)
-    
-    return '\n'.join(sanitized_lines).strip()
+        # 方法1: 安全なASCII文字のみ保持（最もシンプル）
+        # 英数字、日本語、基本的な句読点のみ許可
+        safe_text = re.sub(r'[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\.\,\!\?\:\;\-\(\)\[\]\"\'\/]', ' ', text)
+        
+        # 複数の空白を単一に
+        safe_text = re.sub(r'\s+', ' ', safe_text).strip()
+        
+        # 長すぎる場合は切り詰め
+        if len(safe_text) > 8000:
+            safe_text = safe_text[:8000] + "...(省略)"
+        
+        # ASCII互換性チェック
+        try:
+            safe_text.encode('ascii', errors='ignore').decode('ascii', errors='ignore')
+        except:
+            # ASCII化できない場合の代替処理
+            safe_text = re.sub(r'[^\x20-\x7E\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]', ' ', safe_text)
+            safe_text = re.sub(r'\s+', ' ', safe_text).strip()
+        
+        return safe_text
+        
+    except Exception as e:
+        # 全ての処理が失敗した場合の最終手段
+        st.warning(f"テキスト処理で問題が発生しました: {e}")
+        # 最低限の文字のみ保持
+        fallback_text = re.sub(r'[^\w\s]', ' ', str(text))
+        return re.sub(r'\s+', ' ', fallback_text).strip()[:5000]
 
 def create_review_prompt(document_text, custom_prompt_template, search_results=""):
-    """決裁書レビュー用のプロンプトを作成（サニタイズ付き）"""
-    # テキストをサニタイズ（制御文字・長すぎる行対策）
-    document_text = sanitize_text(document_text)
+    """決裁書レビュー用のプロンプトを作成（安全なエンコーディング付き）"""
+    # 新しい安全なサニタイズ方式を適用
+    document_text = sanitize_text_safe_encoding(document_text)
     
     enhanced_document_text = document_text
     if search_results:
-        search_results = sanitize_text(search_results)
+        search_results = sanitize_text_safe_encoding(search_results)
         enhanced_document_text = document_text + search_results
     
     prompt = custom_prompt_template.format(document_text=enhanced_document_text)
