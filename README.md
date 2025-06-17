@@ -5,10 +5,12 @@
 ## 🌟 特徴
 
 - **PDF書類の自動レビュー**: PDFファイルをアップロードするだけで、AI（Claude Opus 4）がレビューを実行
+- **高品質検索機能**: Tavily APIを活用し、信頼できるソースから関連情報を自動検索
+- **インテリジェント分析**: 文書内容を自動分析し、カテゴリ別に最適化されたクエリで検索
 - **リアルタイム表示**: レビュー結果をストリーミングでリアルタイム表示
 - **カスタマイズ可能**: レビューの観点や指示をカスタマイズ可能
 - **製造業向け**: 製造業の決裁書レビューに特化したデフォルトプロンプト
-- **結果保存**: レビュー結果をテキストファイルでダウンロード可能
+- **結果保存**: レビュー結果をMarkdownファイルでダウンロード可能
 
 ## 🚀 使用方法
 
@@ -30,11 +32,14 @@ pip install -r requirements.txt
 # 設定ファイルを作成
 cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 
-# secrets.tomlにAWS認証情報を設定
+# secrets.tomlに認証情報を設定
 # [aws]
 # AWS_ACCESS_KEY_ID = "your_access_key_here"
 # AWS_SECRET_ACCESS_KEY = "your_secret_key_here"
 # AWS_REGION = "us-west-2"
+# 
+# [tavily]
+# API_KEY = "your_tavily_api_key_here"
 
 # アプリを起動
 streamlit run app.py
@@ -42,11 +47,16 @@ streamlit run app.py
 
 ## ⚙️ 必要な設定
 
-AWS Bedrockへのアクセス権限が必要です：
+以下のAPIアクセス権限が必要です：
 
+### AWS Bedrock
 - **Claude Opus 4**モデルへのアクセス権限
 - **us-west-2**リージョンでの利用
 - 適切なIAMポリシーの設定
+
+### Tavily API
+- **Tavily API**キーの取得（https://tavily.com/）
+- 高品質検索機能のため、信頼できるソースへのアクセス
 
 ## 📋 対応ファイル形式
 
@@ -56,6 +66,7 @@ AWS Bedrockへのアクセス権限が必要です：
 
 - **Frontend**: Streamlit
 - **AI Model**: AWS Bedrock Claude Opus 4
+- **検索API**: Tavily API（高品質Web検索）
 - **PDF処理**: PyPDF2
 - **ホスティング**: Streamlit Cloud
 
