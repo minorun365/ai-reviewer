@@ -135,6 +135,7 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
         # 検索結果をフォーマット
         if search_results:
             formatted_results = "\n\n=== 関連情報（AI抽出キーワード検索結果） ===\n"
+            
             for i, result in enumerate(search_results[:10], 1):  # 最大10件を表示
                 formatted_results += f"\n{i}. {result['title']}\n"
                 formatted_results += f"内容: {result['content'][:200]}...\n"
@@ -149,11 +150,35 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
         st.warning(f"関連情報検索エラー: {e}")
         return ""
 
+def sanitize_text(text):
+    """テキストをサニタイズ（問題のある文字を除去）"""
+    if not text:
+        return text
+    
+    # 制御文字を除去
+    import re
+    sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
+    # 非常に長い行を分割
+    lines = sanitized.split('\n')
+    sanitized_lines = []
+    for line in lines:
+        if len(line) > 1000:  # 1000文字を超える行は分割
+            for i in range(0, len(line), 1000):
+                sanitized_lines.append(line[i:i+1000])
+        else:
+            sanitized_lines.append(line)
+    
+    return '\n'.join(sanitized_lines)
+
 def create_review_prompt(document_text, custom_prompt_template, search_results=""):
-    """決裁書レビュー用のプロンプトを作成"""
-    # 検索結果がある場合は文書テキストに追加
+    """決裁書レビュー用のプロンプトを作成（サニタイズ付き）"""
+    # テキストをサニタイズ（制御文字・長すぎる行対策）
+    document_text = sanitize_text(document_text)
+    
     enhanced_document_text = document_text
     if search_results:
+        search_results = sanitize_text(search_results)
         enhanced_document_text = document_text + search_results
     
     prompt = custom_prompt_template.format(document_text=enhanced_document_text)
@@ -162,6 +187,9 @@ def create_review_prompt(document_text, custom_prompt_template, search_results="
 def stream_bedrock_response(bedrock_client, prompt):
     """Bedrock APIを使用してストリーミングレスポンスを生成（Claude Opus 4でレビュー）"""
     try:
+        # プロンプト長の確認（簡素化）
+        prompt_length = len(prompt)
+        
         model_id = "us.anthropic.claude-opus-4-20250514-v1:0"  # Opus 4でレビュー
         
         messages = [
