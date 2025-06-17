@@ -187,8 +187,19 @@ def create_review_prompt(document_text, custom_prompt_template, search_results="
 def stream_bedrock_response(bedrock_client, prompt):
     """Bedrock APIを使用してストリーミングレスポンスを生成（Claude Opus 4でレビュー）"""
     try:
-        # プロンプト長の確認（簡素化）
+        # デバッグ情報（Streamlit Cloud用）
         prompt_length = len(prompt)
+        st.info(f"🔍 環境デバッグ: プロンプト長 {prompt_length} 文字")
+        
+        # 文字エンコーディングチェック
+        try:
+            prompt_bytes = prompt.encode('utf-8')
+            st.info(f"🔍 UTF-8バイト数: {len(prompt_bytes)}")
+        except Exception as e:
+            st.error(f"🚨 エンコーディングエラー: {e}")
+        
+        # モデル利用可能性チェック
+        st.info(f"🔍 AWS リージョン: {st.secrets.get('aws', {}).get('AWS_REGION', 'unknown')}")
         
         model_id = "us.anthropic.claude-opus-4-20250514-v1:0"  # Opus 4でレビュー
         
@@ -214,7 +225,25 @@ def stream_bedrock_response(bedrock_client, prompt):
         return response
         
     except Exception as e:
-        st.error(f"Bedrock API呼び出しエラー: {e}")
+        error_msg = str(e)
+        st.error(f"🔍 完全なエラーメッセージ: {error_msg}")
+        
+        if "ServiceUnavailableException" in error_msg:
+            st.error("🚫 Bedrock APIが一時的に利用できません。")
+            st.warning("⚠️ Streamlit Cloud環境で問題が発生している可能性があります。")
+            st.info("💡 対処法:")
+            st.info("1. 検索機能をオフにしてお試しください")
+            st.info("2. より短い文書（5ページ以下）でお試しください")
+            st.info("3. プロンプトをシンプルに変更してください")
+                
+        elif "ValidationException" in error_msg:
+            st.error("📝 プロンプトの形式に問題があります。")
+        elif "ThrottlingException" in error_msg:
+            st.error("⏱️ APIのリクエスト制限に達しました。しばらく待ってから再試行してください。")
+        elif "AccessDeniedException" in error_msg:
+            st.error("🔑 AWS認証情報またはモデルアクセス権限を確認してください。")
+        else:
+            st.error(f"❌ Bedrock API呼び出しエラー: {e}")
         return None
 
 def main():
