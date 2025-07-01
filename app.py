@@ -266,38 +266,9 @@ def check_authentication():
                 
                 if submit_button:
                     try:
-                        # デバッグ情報表示（Cloud環境での問題特定用）
-                        st.write("🔍 デバッグ情報:")
-                        st.write(f"入力ユーザー名: '{username}'")
-                        st.write(f"入力パスワード長: {len(password)}")
-                        
                         # secrets.tomlから認証情報を取得
                         correct_username = st.secrets["auth"]["username"]
                         correct_password = st.secrets["auth"]["password"]
-                        
-                        # デバッグ情報
-                        st.write(f"設定ユーザー名: '{correct_username}'")
-                        st.write(f"設定パスワード長: {len(correct_password)}")
-                        st.write(f"ユーザー名一致: {username == correct_username}")
-                        st.write(f"パスワード一致: {password == correct_password}")
-                        
-                        # パスワードの詳細デバッグ
-                        st.write("🔍 パスワード詳細分析:")
-                        st.write(f"入力パスワード文字コード: {[ord(c) for c in password]}")
-                        st.write(f"設定パスワード文字コード: {[ord(c) for c in correct_password]}")
-                        st.write(f"入力パスワード repr: {repr(password)}")
-                        st.write(f"設定パスワード repr: {repr(correct_password)}")
-                        
-                        # 文字単位で比較
-                        if len(password) == len(correct_password):
-                            for i, (c1, c2) in enumerate(zip(password, correct_password)):
-                                if c1 != c2:
-                                    st.write(f"位置{i}: 入力'{c1}'({ord(c1)}) vs 設定'{c2}'({ord(c2)})")
-                        
-                        # トリム後の比較
-                        trimmed_password = password.strip()
-                        trimmed_correct = correct_password.strip()
-                        st.write(f"トリム後一致: {trimmed_password == trimmed_correct}")
                         
                         if username == correct_username and password == correct_password:
                             st.session_state.authenticated = True
@@ -307,18 +278,6 @@ def check_authentication():
                             st.error("❌ ユーザー名またはパスワードが間違っています")
                     except Exception as e:
                         st.error(f"❌ 認証設定エラー: {e}")
-                        st.write(f"エラー詳細: {type(e).__name__}: {str(e)}")
-                        
-                        # secrets の構造をデバッグ
-                        try:
-                            st.write("Secrets構造:")
-                            st.write(f"auth セクション存在: {'auth' in st.secrets}")
-                            if 'auth' in st.secrets:
-                                st.write(f"username キー存在: {'username' in st.secrets['auth']}")
-                                st.write(f"password キー存在: {'password' in st.secrets['auth']}")
-                        except:
-                            st.write("Secrets構造の確認でエラー")
-                        
                         st.info("💡 .streamlit/secrets.toml ファイルに認証情報を設定してください")
         
         return False
