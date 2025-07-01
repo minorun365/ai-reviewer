@@ -132,13 +132,13 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
                 st.warning(f"検索キーワード '{keyword}' でエラー: {e}")
                 continue
         
-        # 検索結果をフォーマット
+        # 検索結果をフォーマット（文字数制限付き）
         if search_results:
             formatted_results = "\n\n=== 関連情報（AI抽出キーワード検索結果） ===\n"
             
-            for i, result in enumerate(search_results[:10], 1):  # 最大10件を表示
-                formatted_results += f"\n{i}. {result['title']}\n"
-                formatted_results += f"内容: {result['content'][:200]}...\n"
+            for i, result in enumerate(search_results[:5], 1):  # 最大5件に制限
+                formatted_results += f"\n{i}. {result['title'][:80]}...\n"  # タイトルも短縮
+                formatted_results += f"内容: {result['content'][:150]}...\n"  # 内容をさらに短縮
                 formatted_results += f"出典: {result['url']}\n"
                 formatted_results += f"検索キーワード: {result['keyword']}\n"
             
@@ -308,22 +308,21 @@ def main():
         st.header("⚙️ レビュー設定")
         
         # デフォルトプロンプトテンプレート
-        default_prompt = """あなたは製造業の経験豊富な上司として、以下の決裁書をレビューしてください。
+        default_prompt = """あなたは製造業の情シス部門の経験豊富な上司として、添付の決裁書をレビューしてください。
 
 【レビュー観点】
-1. 申請理由の妥当性と明確性
-2. 金額・数量・期間等の具体性と妥当性
-3. 承認フローや必要書類の確認
-4. リスク評価と対策の検討
-5. 法規制・社内規定への適合性
-6. 文書の記載漏れや不備
+- 資料はまず冒頭で「何の決裁が欲しいのか」を明確にしてほしい。目的が不明なまま説明が始まると良くない。
+- 「良い資料」の条件は、ひとりよがりにならず、「読む人の立場とレベル」を理解して書かれていることである。
+- 説明の構成と資料の順番が合っているか確認してほしい (当日、スライドをあちこち移動しなくて済むように練ってほしい)
+- 最も重視する要素の1つが「コストの妥当性」
+- 常に「ユーザー目線」を優先し、インフラ部門(自分たち)の都合でユーザーに迷惑がかかるような提案は認めない。
+
+【追加のアドバイス観点】
+- 上記以外にも、一般的なレビュー準備の観点で必要と思われる点があれば、追加でアドバイスをしてください。
+- 決裁説明時の時間配分のアドバイスも添えてください。60分の会議時間の場合、各セクションの所要時間目安と、質疑応答の時間も加味してください。
 
 【決裁書内容】
-{document_text}
-
-【レビュー結果】
-上記の観点から、具体的な指摘事項と改善提案を日本語で出力してください。
-承認可能な場合はその旨も明記し、要改善点がある場合は優先度を付けて説明してください。"""
+{document_text}"""
         
         custom_prompt = st.text_area(
             "レビュープロンプト",
