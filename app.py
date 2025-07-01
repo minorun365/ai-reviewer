@@ -281,6 +281,24 @@ def check_authentication():
                         st.write(f"ユーザー名一致: {username == correct_username}")
                         st.write(f"パスワード一致: {password == correct_password}")
                         
+                        # パスワードの詳細デバッグ
+                        st.write("🔍 パスワード詳細分析:")
+                        st.write(f"入力パスワード文字コード: {[ord(c) for c in password]}")
+                        st.write(f"設定パスワード文字コード: {[ord(c) for c in correct_password]}")
+                        st.write(f"入力パスワード repr: {repr(password)}")
+                        st.write(f"設定パスワード repr: {repr(correct_password)}")
+                        
+                        # 文字単位で比較
+                        if len(password) == len(correct_password):
+                            for i, (c1, c2) in enumerate(zip(password, correct_password)):
+                                if c1 != c2:
+                                    st.write(f"位置{i}: 入力'{c1}'({ord(c1)}) vs 設定'{c2}'({ord(c2)})")
+                        
+                        # トリム後の比較
+                        trimmed_password = password.strip()
+                        trimmed_correct = correct_password.strip()
+                        st.write(f"トリム後一致: {trimmed_password == trimmed_correct}")
+                        
                         if username == correct_username and password == correct_password:
                             st.session_state.authenticated = True
                             st.success("✅ ログイン成功！")
