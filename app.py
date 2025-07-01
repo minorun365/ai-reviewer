@@ -245,12 +245,56 @@ def stream_bedrock_response(bedrock_client, prompt):
             st.error(f"❌ Bedrock API呼び出しエラー: {e}")
         return None
 
+def check_authentication():
+    """認証チェック関数"""
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    
+    if not st.session_state.authenticated:
+        st.title("🔐 ログイン")
+        st.markdown("認証が必要です")
+        
+        with st.form("login_form"):
+            username = st.text_input("ユーザー名")
+            password = st.text_input("パスワード", type="password")
+            submit_button = st.form_submit_button("ログイン")
+            
+            if submit_button:
+                try:
+                    # secrets.tomlから認証情報を取得
+                    correct_username = st.secrets["auth"]["username"]
+                    correct_password = st.secrets["auth"]["password"]
+                    
+                    if username == correct_username and password == correct_password:
+                        st.session_state.authenticated = True
+                        st.success("✅ ログイン成功！")
+                        st.rerun()
+                    else:
+                        st.error("❌ ユーザー名またはパスワードが間違っています")
+                except Exception as e:
+                    st.error(f"❌ 認証設定エラー: {e}")
+                    st.info("💡 .streamlit/secrets.toml ファイルに認証情報を設定してください")
+        
+        return False
+    
+    return True
+
 def main():
     st.set_page_config(
         page_title="部長AI",
         page_icon="👨‍💼",
         layout="wide"
     )
+    
+    # 認証チェック
+    if not check_authentication():
+        return
+    
+    # ログアウトボタンをサイドバーに追加
+    with st.sidebar:
+        if st.button("🚪 ログアウト"):
+            st.session_state.authenticated = False
+            st.rerun()
     
     st.title("👨‍💼 部長AI")
     st.markdown("あなたの上司に代わって、決裁資料のレビューをします！")
