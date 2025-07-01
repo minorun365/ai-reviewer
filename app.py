@@ -251,29 +251,33 @@ def check_authentication():
         st.session_state.authenticated = False
     
     if not st.session_state.authenticated:
-        st.title("🔐 ログイン")
-        st.markdown("認証が必要です")
+        # 中央寄せのためのレイアウト
+        col1, col2, col3 = st.columns([1, 2, 1])
         
-        with st.form("login_form"):
-            username = st.text_input("ユーザー名")
-            password = st.text_input("パスワード", type="password")
-            submit_button = st.form_submit_button("ログイン")
+        with col2:
+            st.title("🔐 ログイン")
+            st.markdown("認証が必要です")
             
-            if submit_button:
-                try:
-                    # secrets.tomlから認証情報を取得
-                    correct_username = st.secrets["auth"]["username"]
-                    correct_password = st.secrets["auth"]["password"]
-                    
-                    if username == correct_username and password == correct_password:
-                        st.session_state.authenticated = True
-                        st.success("✅ ログイン成功！")
-                        st.rerun()
-                    else:
-                        st.error("❌ ユーザー名またはパスワードが間違っています")
-                except Exception as e:
-                    st.error(f"❌ 認証設定エラー: {e}")
-                    st.info("💡 .streamlit/secrets.toml ファイルに認証情報を設定してください")
+            with st.form("login_form"):
+                username = st.text_input("ユーザー名")
+                password = st.text_input("パスワード", type="password")
+                submit_button = st.form_submit_button("ログイン", use_container_width=True)
+                
+                if submit_button:
+                    try:
+                        # secrets.tomlから認証情報を取得
+                        correct_username = st.secrets["auth"]["username"]
+                        correct_password = st.secrets["auth"]["password"]
+                        
+                        if username == correct_username and password == correct_password:
+                            st.session_state.authenticated = True
+                            st.success("✅ ログイン成功！")
+                            st.rerun()
+                        else:
+                            st.error("❌ ユーザー名またはパスワードが間違っています")
+                    except Exception as e:
+                        st.error(f"❌ 認証設定エラー: {e}")
+                        st.info("💡 .streamlit/secrets.toml ファイルに認証情報を設定してください")
         
         return False
     
