@@ -3,8 +3,12 @@ import boto3
 import PyPDF2
 import io
 import json
+from datetime import datetime
 from tavily import TavilyClient
 from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
 
 def init_bedrock_client():
     """AWS Bedrockクライアントを初期化"""
@@ -228,6 +232,125 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
     except Exception as e:
         st.warning(f"関連情報検索エラー: {e}")
         return ""
+
+def create_powerpoint_from_review(review_text, filename="review_result"):
+    """レビュー結果からPowerPointプレゼンテーションを作成"""
+    try:
+        # 新しいプレゼンテーションを作成
+        prs = Presentation()
+        
+        # タイトルスライドを作成
+        slide_layout = prs.slide_layouts[0]  # タイトルスライドレイアウト
+        slide = prs.slides.add_slide(slide_layout)
+        
+        # タイトル設定（存在する場合のみ）
+        if slide.shapes.title:
+            slide.shapes.title.text = "📋 決裁書レビュー結果"
+            # タイトルのフォントサイズを設定
+            title_text_frame = slide.shapes.title.text_frame
+            for paragraph in title_text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(36)
+                    run.font.bold = True
+        
+        # サブタイトル設定（プレースホルダーが存在する場合のみ）
+        if len(slide.placeholders) > 1:
+            subtitle_placeholder = slide.placeholders[1]
+            subtitle_placeholder.text = f"AI部長によるレビュー\n生成日時: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}"
+            # サブタイトルのフォントサイズを設定
+            subtitle_text_frame = subtitle_placeholder.text_frame
+            for paragraph in subtitle_text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(18)
+        
+        # レビュー内容を解析してセクションに分割
+        sections = parse_review_content(review_text)
+        
+        # 各セクションを別スライドに
+        for section_title, content in sections:
+            slide_layout = prs.slide_layouts[1]  # タイトルとコンテンツレイアウト
+            slide = prs.slides.add_slide(slide_layout)
+            
+            # タイトル設定
+            if slide.shapes.title:
+                slide.shapes.title.text = section_title
+                # タイトルのフォント設定
+                title_text_frame = slide.shapes.title.text_frame
+                for paragraph in title_text_frame.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.size = Pt(28)
+                        run.font.bold = True
+            
+            # コンテンツ設定（プレースホルダーが存在する場合のみ）
+            if len(slide.placeholders) > 1:
+                content_placeholder = slide.placeholders[1]
+                
+                # 長すぎるコンテンツを調整
+                if len(content) > 800:
+                    content = content[:800] + "\n\n（以下省略）"
+                
+                content_placeholder.text = content
+                
+                # フォントサイズを調整
+                content_text_frame = content_placeholder.text_frame
+                for paragraph in content_text_frame.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.size = Pt(16)
+                
+                # 自動サイズ調整を有効化
+                content_text_frame.auto_size = True
+        
+        # メモリ上でファイルを作成
+        ppt_io = io.BytesIO()
+        prs.save(ppt_io)
+        ppt_io.seek(0)
+        
+        return ppt_io.getvalue()
+        
+    except Exception as e:
+        st.error(f"PowerPoint生成エラー: {e}")
+        return None
+
+def parse_review_content(review_text):
+    """レビューテキストを解析してセクションに分割"""
+    import re
+    from datetime import datetime
+    
+    sections = []
+    
+    # 見出しで分割（絵文字付きの見出しを検出）
+    lines = review_text.split('\n')
+    current_section_title = ""
+    current_content = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # 見出しの検出（##で始まるもの、または絵文字で始まるもの）
+        if (line.startswith('##') or 
+            re.match(r'^[🔍📊💡⚠️📋✅❌💰🎯📈📉⏰🔧🚀📝💪👍]+\s*[^\s]', line)):
+            
+            # 前のセクションを保存
+            if current_section_title and current_content:
+                sections.append((current_section_title, '\n'.join(current_content)))
+            
+            # 新しいセクション開始
+            current_section_title = line.replace('##', '').strip()
+            current_content = []
+        else:
+            current_content.append(line)
+    
+    # 最後のセクションを追加
+    if current_section_title and current_content:
+        sections.append((current_section_title, '\n'.join(current_content)))
+    
+    # セクションが見つからない場合は全体を一つのスライドに
+    if not sections:
+        sections = [("レビュー結果", review_text)]
+    
+    return sections
 
 def sanitize_text_safe_encoding(text):
     """安全なエンコーディング方式でテキストをサニタイズ"""
@@ -587,13 +710,16 @@ def main():
                                 # 最終結果の保存オプション
                                 st.success("✅ レビュー完了")
                                 
-                                # ダウンロードボタン
-                                st.download_button(
-                                    label="📥 レビュー結果をMarkdownでダウンロード",
-                                    data=full_response,
-                                    file_name=f"review_{uploaded_file.name.replace('.pdf', '')}.md",
-                                    mime="text/plain"
-                                )
+                                # PowerPointダウンロードボタン
+                                ppt_data = create_powerpoint_from_review(full_response)
+                                if ppt_data:
+                                    st.download_button(
+                                        label="📊 レビュー結果をPowerPointでダウンロード",
+                                        data=ppt_data,
+                                        file_name=f"review_{uploaded_file.name.replace('.pdf', '').replace('.pptx', '')}.pptx",
+                                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                        type="primary"
+                                    )
                                 
                             except Exception as e:
                                 st.error(f"ストリーミング処理エラー: {e}")
