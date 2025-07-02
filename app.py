@@ -240,21 +240,9 @@ def create_review_prompt(document_text, custom_prompt_template, search_results="
     return prompt
 
 def stream_bedrock_response(bedrock_client, prompt):
-    """Bedrock APIを使用してストリーミングレスポンスを生成（Claude Opus 4でレビュー）"""
+    """Bedrock APIを使用してストリーミングレスポンスを生成"""
     try:
-        # プロンプト長の確認とデバッグ情報
-        prompt_length = len(prompt)
-        st.info(f"🔍 デバッグ情報:")
-        st.info(f"📏 プロンプト長: {prompt_length:,} 文字")
-        st.info(f"📄 プロンプトサイズ: {len(prompt.encode('utf-8')):,} バイト")
-        
-        # プロンプトが長すぎる場合の警告
-        if prompt_length > 180000:  # 約18万文字
-            st.warning(f"⚠️ プロンプトが長すぎます ({prompt_length:,} 文字)")
-            st.info("💡 検索機能をオフにするか、より短い文書を使用することをお勧めします")
-        
-        model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"  # Sonnet 4でレビュー（制限が緩い）
-        st.info(f"🤖 使用モデル: {model_id}")
+        model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
         
         messages = [
             {
@@ -279,34 +267,14 @@ def stream_bedrock_response(bedrock_client, prompt):
         
     except Exception as e:
         error_msg = str(e)
-        st.error(f"❌ Bedrock API呼び出しエラー（詳細）:")
-        st.error(f"エラータイプ: {type(e).__name__}")
-        st.error(f"エラーメッセージ: {error_msg}")
-        
-        # 具体的なエラー分析
         if "ServiceUnavailableException" in error_msg:
-            st.error("🚫 Bedrock APIが一時的に利用できません。")
-            st.info("💡 対処法: 検索機能をオフにするか、より短い文書でお試しください。")
-        elif "ValidationException" in error_msg:
-            st.error("📝 プロンプトの形式に問題があります。")
-            st.info("💡 プロンプト内容に不正な文字や形式が含まれている可能性があります。")
+            st.error("🚫 Bedrock APIが一時的に利用できません。検索機能をオフにするか、より短い文書でお試しください。")
         elif "ThrottlingException" in error_msg:
-            st.error("⏱️ APIのリクエスト制限に達しました。")
-            st.info("💡 しばらく待ってから再試行してください。")
+            st.error("⏱️ APIのリクエスト制限に達しました。しばらく待ってから再試行してください。")
         elif "AccessDeniedException" in error_msg:
             st.error("🔑 AWS認証情報またはモデルアクセス権限を確認してください。")
-        elif "ResourceNotFoundException" in error_msg:
-            st.error("🔍 指定されたモデルが見つかりません。")
-            st.info("💡 モデルIDが正しいか、またはリージョンでモデルが利用可能か確認してください。")
-        elif "ModelNotReadyException" in error_msg:
-            st.error("🔄 モデルの準備ができていません。")
-            st.info("💡 しばらく待ってから再試行してください。")
-        
-        # プロンプト情報もエラー時に表示
-        st.info(f"🔍 エラー発生時のプロンプト情報:")
-        st.info(f"📏 プロンプト長: {len(prompt):,} 文字")
-        st.info(f"📄 プロンプトサイズ: {len(prompt.encode('utf-8')):,} バイト")
-        
+        else:
+            st.error(f"❌ Bedrock API呼び出しエラー: {e}")
         return None
 
 def check_authentication():
@@ -537,7 +505,7 @@ def main():
                     prompt = create_review_prompt(document_text, st.session_state.get('custom_prompt', ''), search_results)
                     
                     # ストリーミングレスポンス表示
-                    with st.spinner("Claude Sonnet 4が高品質レビューを実行中..."):
+                    with st.spinner("AIレビューを実行中..."):
                         response_stream = stream_bedrock_response(bedrock_client, prompt)
                         
                         if response_stream:
