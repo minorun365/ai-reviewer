@@ -40,14 +40,12 @@ def init_tavily_client():
         st.error(f"Tavily API接続エラー: {e}")
         return None
 
-def extract_keywords_with_sonnet(bedrock_client, document_text):
-    """Claude Sonnet 4を使用して文書から検索キーワードを抽出"""
-    try:
-        keyword_extraction_prompt = f"""
+# システムプロンプト定義
+KEYWORD_EXTRACTION_PROMPT_TEMPLATE = """
 以下の決裁書から、関連情報を検索するための効果的なキーワードを抽出してください。
 
 【決裁書内容】
-{document_text[:1500]}
+{document_text}
 
 【指示】
 1. この決裁書の内容に最も関連する検索キーワードを3個抽出
@@ -61,6 +59,48 @@ def extract_keywords_with_sonnet(bedrock_client, document_text):
 
 ※キーワードのみを出力し、説明は不要です。
 """
+
+DEFAULT_REVIEW_PROMPT_TEMPLATE = """
+あなたは製造業の情シス部門の経験豊富な上司（平井さん）として振る舞います。豊富な経験とデータに基づいた的確な判断で、部下の成長を支援しながら業務をサポートしてください。
+
+添付の決裁書をレビューする際は、まず作成者をねぎらうために一言褒めてあげてください。
+
+【基本レビュー観点】
+- 資料はまず冒頭で「何の決裁が欲しいのか」を明確にしてほしい。目的が不明なまま説明が始まると良くない。
+- 「良い資料」の条件は、ひとりよがりにならず、「読む人の立場とレベル」を理解して書かれていることである。
+- 説明の構成と資料の順番が合っているか確認してほしい (当日、スライドをあちこち移動しなくて済むように練ってほしい)
+- 最も重視する要素の1つが「コストの妥当性」
+- 常に「ユーザー目線」を優先し、インフラ部門(自分たち)の都合でユーザーに迷惑がかかるような提案は認めない。
+
+【高度な分析観点】
+- 過去の類似案件との比較：同様のシステム導入や改修案件があれば、その成功/失敗要因を参考に助言する
+- 業界動向・技術トレンド：最新の技術動向や競合他社の事例を踏まえた妥当性を評価
+- リスク分析：技術的リスク、セキュリティリスク、運用リスクを多角的に評価
+- トヨタグループ内での整合性：グループ内の他部門や関連会社での類似取り組みとの連携可能性を検討
+
+【追加のアドバイス観点】
+- 上記以外にも、一般的なレビュー準備の観点で必要と思われる点があれば、追加でアドバイスをしてください。
+- 判断根拠を明確に示し、「なぜそう判断したか」を具体的に説明してください。
+- 改善提案をする際は、実現可能性を考慮した現実的なアドバイスを心がけてください。
+
+【時間配分アドバイス】
+- 決裁説明時の時間配分のアドバイスも添えてください。60分の会議時間の場合、各セクションの所要時間目安と、質疑応答の時間も加味してください。
+- 重要な論点に時間を多く配分し、詳細すぎる技術説明は別資料に回すなど、メリハリのある構成を提案してください。
+
+【レビュー後のフォロー】
+- 承認条件や宿題事項があれば明確に示してください。
+- 次回のレビューに向けた改善ポイントを建設的に伝えてください。
+
+【決裁書内容】
+{document_text}
+"""
+
+def extract_keywords_with_sonnet(bedrock_client, document_text):
+    """Claude Sonnet 4を使用して文書から検索キーワードを抽出"""
+    try:
+        keyword_extraction_prompt = KEYWORD_EXTRACTION_PROMPT_TEMPLATE.format(
+            document_text=document_text[:1500]
+        )
         
         messages = [
             {
@@ -91,11 +131,11 @@ def extract_keywords_with_sonnet(bedrock_client, document_text):
                 if keyword:
                     keywords.append(keyword)
         
-        return keywords[:5]  # 最大5個
+        return keywords[:3]  # 最大3個
         
     except Exception as e:
         st.warning(f"キーワード抽出エラー: {e}")
-        return ["決裁書 承認 ガイドライン"]  # フォールバック
+        return ["決裁書", "承認", "ガイドライン"]  # フォールバック
 
 def search_related_information(tavily_client, bedrock_client, document_text, enable_search=True):
     """文書内容に関連する最新情報を検索"""
@@ -203,10 +243,19 @@ def create_review_prompt(document_text, custom_prompt_template, search_results="
 def stream_bedrock_response(bedrock_client, prompt):
     """Bedrock APIを使用してストリーミングレスポンスを生成（Claude Opus 4でレビュー）"""
     try:
-        # プロンプト長の確認
+        # プロンプト長の確認とデバッグ情報
         prompt_length = len(prompt)
+        st.info(f"🔍 デバッグ情報:")
+        st.info(f"📏 プロンプト長: {prompt_length:,} 文字")
+        st.info(f"📄 プロンプトサイズ: {len(prompt.encode('utf-8')):,} バイト")
+        
+        # プロンプトが長すぎる場合の警告
+        if prompt_length > 180000:  # 約18万文字
+            st.warning(f"⚠️ プロンプトが長すぎます ({prompt_length:,} 文字)")
+            st.info("💡 検索機能をオフにするか、より短い文書を使用することをお勧めします")
         
         model_id = "us.anthropic.claude-opus-4-20250514-v1:0"  # Opus 4でレビュー
+        st.info(f"🤖 使用モデル: {model_id}")
         
         messages = [
             {
@@ -231,18 +280,34 @@ def stream_bedrock_response(bedrock_client, prompt):
         
     except Exception as e:
         error_msg = str(e)
+        st.error(f"❌ Bedrock API呼び出しエラー（詳細）:")
+        st.error(f"エラータイプ: {type(e).__name__}")
+        st.error(f"エラーメッセージ: {error_msg}")
+        
+        # 具体的なエラー分析
         if "ServiceUnavailableException" in error_msg:
-            st.error("🚫 Bedrock APIが一時的に利用できません。プロンプトが長すぎるか、サービスが混雑している可能性があります。")
+            st.error("🚫 Bedrock APIが一時的に利用できません。")
             st.info("💡 対処法: 検索機能をオフにするか、より短い文書でお試しください。")
-                
         elif "ValidationException" in error_msg:
             st.error("📝 プロンプトの形式に問題があります。")
+            st.info("💡 プロンプト内容に不正な文字や形式が含まれている可能性があります。")
         elif "ThrottlingException" in error_msg:
-            st.error("⏱️ APIのリクエスト制限に達しました。しばらく待ってから再試行してください。")
+            st.error("⏱️ APIのリクエスト制限に達しました。")
+            st.info("💡 しばらく待ってから再試行してください。")
         elif "AccessDeniedException" in error_msg:
             st.error("🔑 AWS認証情報またはモデルアクセス権限を確認してください。")
-        else:
-            st.error(f"❌ Bedrock API呼び出しエラー: {e}")
+        elif "ResourceNotFoundException" in error_msg:
+            st.error("🔍 指定されたモデルが見つかりません。")
+            st.info("💡 モデルIDが正しいか、またはリージョンでモデルが利用可能か確認してください。")
+        elif "ModelNotReadyException" in error_msg:
+            st.error("🔄 モデルの準備ができていません。")
+            st.info("💡 しばらく待ってから再試行してください。")
+        
+        # プロンプト情報もエラー時に表示
+        st.info(f"🔍 エラー発生時のプロンプト情報:")
+        st.info(f"📏 プロンプト長: {len(prompt):,} 文字")
+        st.info(f"📄 プロンプトサイズ: {len(prompt.encode('utf-8')):,} バイト")
+        
         return None
 
 def check_authentication():
@@ -405,23 +470,8 @@ def main():
     with st.sidebar:
         st.header("⚙️ レビュー設定")
         
-        # デフォルトプロンプトテンプレート
-        default_prompt = """あなたは製造業の情シス部門の経験豊富な上司として、添付の決裁書をレビューしてください。
-最初に、作成者をねぎらうために一言褒めてあげてください。
-
-【レビュー観点】
-- 資料はまず冒頭で「何の決裁が欲しいのか」を明確にしてほしい。目的が不明なまま説明が始まると良くない。
-- 「良い資料」の条件は、ひとりよがりにならず、「読む人の立場とレベル」を理解して書かれていることである。
-- 説明の構成と資料の順番が合っているさか確認してほしい (当日、スライドをあちこち移動しなくて済むように練ってほしい)
-- 最も重視する要素の1つが「コストの妥当性」
-- 常に「ユーザー目線」を優先し、インフラ部門(自分たち)の都合でユーザーに迷惑がかかるような提案は認めない。
-
-【追加のアドバイス観点】
-- 上記以外にも、一般的なレビュー準備の観点で必要と思われる点があれば、追加でアドバイスをしてください。
-- 決裁説明時の時間配分のアドバイスも添えてください。60分の会議時間の場合、各セクションの所要時間目安と、質疑応答の時間も加味してください。
-
-【決裁書内容】
-{document_text}"""
+        # デフォルトプロンプトテンプレート（変数から取得）
+        default_prompt = DEFAULT_REVIEW_PROMPT_TEMPLATE
         
         custom_prompt = st.text_area(
             "レビュープロンプト",
@@ -431,7 +481,7 @@ def main():
         )
         
         if st.button("プロンプトをリセット"):
-            st.session_state.custom_prompt = default_prompt
+            st.session_state.custom_prompt = DEFAULT_REVIEW_PROMPT_TEMPLATE
             st.rerun()
             
         # セッション状態にプロンプトを保存
