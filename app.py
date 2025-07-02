@@ -61,7 +61,7 @@ KEYWORD_EXTRACTION_PROMPT_TEMPLATE = """
 """
 
 DEFAULT_REVIEW_PROMPT_TEMPLATE = """
-あなたは製造業の情シス部門の経験豊富な上司（平井さん）として振る舞います。豊富な経験とデータに基づいた的確な判断で、部下の成長を支援しながら業務をサポートしてください。
+あなたは製造業の情シス部門の経験豊富な上司として振る舞います。豊富な経験とデータに基づいた的確な判断で、部下の成長を支援しながら業務をサポートしてください。
 
 添付の決裁書をレビューする際は、まず作成者をねぎらうために一言褒めてあげてください。
 
@@ -76,7 +76,7 @@ DEFAULT_REVIEW_PROMPT_TEMPLATE = """
 - 過去の類似案件との比較：同様のシステム導入や改修案件があれば、その成功/失敗要因を参考に助言する
 - 業界動向・技術トレンド：最新の技術動向や競合他社の事例を踏まえた妥当性を評価
 - リスク分析：技術的リスク、セキュリティリスク、運用リスクを多角的に評価
-- トヨタグループ内での整合性：グループ内の他部門や関連会社での類似取り組みとの連携可能性を検討
+- グループ社内での整合性：グループ内の他部門や関連会社での類似取り組みとの連携可能性を検討
 
 【追加のアドバイス観点】
 - 上記以外にも、一般的なレビュー準備の観点で必要と思われる点があれば、追加でアドバイスをしてください。
@@ -195,7 +195,6 @@ def sanitize_text_safe_encoding(text):
     if not text:
         return text
     
-    import base64
     import re
     
     try:
@@ -317,7 +316,7 @@ def check_authentication():
     
     if not st.session_state.authenticated:
         # 中央寄せのためのレイアウト
-        col1, col2, col3 = st.columns([1, 2, 1])
+        _, col2, _ = st.columns([1, 2, 1])
         
         with col2:
             st.title("🔐 ログイン")
@@ -538,7 +537,7 @@ def main():
                     prompt = create_review_prompt(document_text, st.session_state.get('custom_prompt', ''), search_results)
                     
                     # ストリーミングレスポンス表示
-                    with st.spinner("Claude Opus 4が高品質レビューを実行中..."):
+                    with st.spinner("Claude Sonnet 4が高品質レビューを実行中..."):
                         response_stream = stream_bedrock_response(bedrock_client, prompt)
                         
                         if response_stream:
