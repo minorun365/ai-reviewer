@@ -520,6 +520,23 @@ def main():
         border-right: 1px solid #e2e8f0;
     }
     
+    /* サイドバー全体の余白調整 */
+    .stSidebar > div {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    /* より具体的なサイドバーのスタイリング */
+    [data-testid="stSidebar"] {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    [data-testid="stSidebar"] > div {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
     /* ボタンのスタイリング */
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
