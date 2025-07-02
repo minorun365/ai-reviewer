@@ -254,7 +254,7 @@ def stream_bedrock_response(bedrock_client, prompt):
             st.warning(f"⚠️ プロンプトが長すぎます ({prompt_length:,} 文字)")
             st.info("💡 検索機能をオフにするか、より短い文書を使用することをお勧めします")
         
-        model_id = "us.anthropic.claude-opus-4-20250514-v1:0"  # Opus 4でレビュー
+        model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"  # Sonnet 4でレビュー（制限が緩い）
         st.info(f"🤖 使用モデル: {model_id}")
         
         messages = [
