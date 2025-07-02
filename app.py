@@ -60,8 +60,8 @@ KEYWORD_EXTRACTION_PROMPT_TEMPLATE = """
 ※キーワードのみを出力し、説明は不要です。
 """
 
-DEFAULT_REVIEW_PROMPT_TEMPLATE = """
-あなたは製造業の情シス部門の経験豊富な上司として振る舞います。豊富な経験とデータに基づいた的確な判断で、部下の成長を支援しながら業務をサポートしてください。
+DEFAULT_REVIEW_PROMPT_TEMPLATE = """あなたは製造業の情シス部門の経験豊富な上司として振る舞います。
+豊富な経験とデータに基づいた的確な判断で、部下の成長を支援しながら業務をサポートしてください。
 
 添付の決裁書をレビューする際は、まず作成者をねぎらうために一言褒めてあげてください。
 
@@ -92,8 +92,7 @@ DEFAULT_REVIEW_PROMPT_TEMPLATE = """
 - 次回のレビューに向けた改善ポイントを建設的に伝えてください。
 
 【決裁書内容】
-{document_text}
-"""
+{document_text}"""
 
 def extract_keywords_with_sonnet(bedrock_client, document_text):
     """Claude Sonnet 4を使用して文書から検索キーワードを抽出"""
@@ -144,7 +143,7 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
     
     try:
         # Claude Sonnet 4でキーワード抽出
-        st.info("Claude Sonnet 4で検索キーワードを抽出中...")
+        st.info("検索キーワードを抽出中...")
         extracted_keywords = extract_keywords_with_sonnet(bedrock_client, document_text)
         
         if extracted_keywords:
