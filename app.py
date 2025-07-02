@@ -116,7 +116,7 @@ def extract_keywords_with_sonnet(bedrock_client, document_text):
             modelId="us.anthropic.claude-sonnet-4-20250514-v1:0",  # Sonnet 4
             messages=messages,
             inferenceConfig={
-                "maxTokens": 500
+                "maxTokens": 4096
             }
         )
         
@@ -442,7 +442,7 @@ def main():
         custom_prompt = st.text_area(
             "レビュープロンプト",
             value=default_prompt,
-            height=600,
+            height=500,
             help="プロンプト内で {document_text} を使用すると、PDFの内容が挿入されます"
         )
         
