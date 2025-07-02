@@ -104,7 +104,7 @@ def search_related_information(tavily_client, bedrock_client, document_text, ena
     
     try:
         # Claude Sonnet 4でキーワード抽出
-        st.info("🤖 Claude Sonnet 4で検索キーワードを抽出中...")
+        st.info("Claude Sonnet 4で検索キーワードを抽出中...")
         extracted_keywords = extract_keywords_with_sonnet(bedrock_client, document_text)
         
         if extracted_keywords:
@@ -290,18 +290,116 @@ def main():
         layout="wide"
     )
     
+    # カスタムCSS
+    st.markdown("""
+    <style>
+    /* 全体のフォント設定 */
+    .main {
+        padding-top: 2rem;
+    }
+    
+    /* タイトルのスタイリング */
+    .main-title {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #1f2937;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .subtitle {
+        font-size: 1.2rem;
+        color: #6b7280;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    /* サイドバーのスタイリング */
+    .css-1d391kg {
+        background-color: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+    }
+    
+    /* ボタンのスタイリング */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* プライマリボタン */
+    div[data-testid="stButton"] > button[kind="primary"] {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* アップロードエリアのスタイリング */
+    .uploadedFile {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        background-color: #f9fafb;
+        transition: all 0.3s ease;
+    }
+    
+    .uploadedFile:hover {
+        border-color: #667eea;
+        background-color: #f0f4ff;
+    }
+    
+    /* 成功メッセージのスタイリング */
+    .stSuccess > div {
+        background-color: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 8px;
+        color: #065f46;
+    }
+    
+    /* エラーメッセージのスタイリング */
+    .stError > div {
+        background-color: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        color: #991b1b;
+    }
+    
+    /* 情報メッセージのスタイリング */
+    .stInfo > div {
+        background-color: #eff6ff;
+        border: 1px solid #93c5fd;
+        border-radius: 8px;
+        color: #1e40af;
+    }
+    
+    /* スピナーのスタイリング */
+    .stSpinner > div {
+        border-color: #667eea !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # 認証チェック
     if not check_authentication():
         return
     
-    # ログアウトボタンをサイドバーに追加
-    with st.sidebar:
-        if st.button("🚪 ログアウト"):
-            st.session_state.authenticated = False
-            st.rerun()
     
-    st.title("👨‍💼 部長AI")
-    st.markdown("あなたの上司に代わって、決裁資料のレビューをします！")
+    # タイトルエリア
+    st.markdown('<h1 class="main-title">👨‍💼 部長AI</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">あなたの上司に代わって、決裁資料のレビューをします</p>', unsafe_allow_html=True)
     
     # サイドバーでレビュープロンプト設定
     with st.sidebar:
