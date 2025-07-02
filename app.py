@@ -4,6 +4,7 @@ import PyPDF2
 import io
 import json
 from tavily import TavilyClient
+from pptx import Presentation
 
 def init_bedrock_client():
     """AWS Bedrockクライアントを初期化"""
@@ -29,6 +30,42 @@ def extract_text_from_pdf(pdf_file):
         return text
     except Exception as e:
         st.error(f"PDF読み込みエラー: {e}")
+        return None
+
+def extract_text_from_pptx(pptx_file):
+    """PowerPointファイルからテキストを抽出"""
+    try:
+        # ファイルポインタを先頭に戻す
+        pptx_file.seek(0)
+        
+        # PowerPointファイルを読み込み
+        presentation = Presentation(pptx_file)
+        text = ""
+        
+        for slide_num, slide in enumerate(presentation.slides, 1):
+            text += f"\n--- スライド {slide_num} ---\n"
+            
+            # スライド内の全ての図形からテキストを抽出
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    text += shape.text + "\n"
+                
+                # 表がある場合のテキスト抽出
+                if shape.has_table:
+                    table = shape.table
+                    for row in table.rows:
+                        row_text = []
+                        for cell in row.cells:
+                            if cell.text:
+                                row_text.append(cell.text.strip())
+                        if row_text:
+                            text += " | ".join(row_text) + "\n"
+            
+            text += "\n"
+        
+        return text
+    except Exception as e:
+        st.error(f"PowerPoint読み込みエラー: {e}")
         return None
 
 def init_tavily_client():
@@ -467,17 +504,26 @@ def main():
     
     # メインエリア    
     uploaded_file = st.file_uploader(
-        "決裁書（PDF）をアップロードしてください",
-        type=['pdf'],
-        help="PDFファイルのみ対応しています"
+        "決裁書をアップロードしてください",
+        type=['pdf', 'pptx'],
+        help="PDFファイル(.pdf)またはPowerPointファイル(.pptx)に対応しています"
     )
     
     if uploaded_file is not None:
         st.success(f"✅ ファイル '{uploaded_file.name}' がアップロードされました")
         
-        # PDFテキスト抽出
-        with st.spinner("PDF内容を読み込み中..."):
-            document_text = extract_text_from_pdf(uploaded_file)
+        # ファイル形式を判定してテキスト抽出
+        file_extension = uploaded_file.name.lower().split('.')[-1]
+        
+        if file_extension == 'pdf':
+            with st.spinner("PDF内容を読み込み中..."):
+                document_text = extract_text_from_pdf(uploaded_file)
+        elif file_extension == 'pptx':
+            with st.spinner("PowerPoint内容を読み込み中..."):
+                document_text = extract_text_from_pptx(uploaded_file)
+        else:
+            st.error(f"サポートされていないファイル形式です: {file_extension}")
+            document_text = None
         
         if document_text:
             st.success("✅ テキスト抽出完了")
