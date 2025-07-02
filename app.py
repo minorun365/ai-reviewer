@@ -264,7 +264,7 @@ def sanitize_text_safe_encoding(text):
         fallback_text = re.sub(r'[^\w\s]', ' ', str(text))
         return re.sub(r'\s+', ' ', fallback_text).strip()[:5000]
 
-def create_review_prompt(document_text, custom_prompt_template, search_results=""):
+def create_review_prompt(document_text, custom_prompt_template, search_results="", additional_message=""):
     """決裁書レビュー用のプロンプトを作成（安全なエンコーディング付き）"""
     # 新しい安全なサニタイズ方式を適用
     document_text = sanitize_text_safe_encoding(document_text)
@@ -274,7 +274,13 @@ def create_review_prompt(document_text, custom_prompt_template, search_results="
         search_results = sanitize_text_safe_encoding(search_results)
         enhanced_document_text = document_text + search_results
     
-    prompt = custom_prompt_template.format(document_text=enhanced_document_text)
+    # 追加メッセージがある場合はプロンプトに含める
+    if additional_message and additional_message.strip():
+        additional_instruction = f"\n\n【追加のレビュー指示】\n{sanitize_text_safe_encoding(additional_message)}\n上記の指示を特に重視してレビューを行ってください。"
+        prompt = custom_prompt_template.format(document_text=enhanced_document_text) + additional_instruction
+    else:
+        prompt = custom_prompt_template.format(document_text=enhanced_document_text)
+    
     return prompt
 
 def stream_bedrock_response(bedrock_client, prompt):
@@ -510,7 +516,18 @@ def main():
     )
     
     if uploaded_file is not None:
-        st.success(f"✅ ファイル '{uploaded_file.name}' がアップロードされました")
+        st.success(f"✅ ファイルアップロード完了")
+        
+        # 追加のメッセージ入力フォーム
+        st.markdown("### 📝 追加のレビュー指示（任意）")
+        st.markdown("*今回のレビューで特に注意したい点があれば、下記に入力してください*")
+        additional_message = st.text_area(
+            "追加の指示内容",
+            placeholder="例：今回のレビューは定性効果のみ訴求すればOKで、定量効果は不要です",
+            help="空欄のままでも問題ありません。必要に応じて追加の指示を記入してください。",
+            height=100,
+            label_visibility="collapsed"
+        )
         
         # ファイル形式を判定してテキスト抽出
         file_extension = uploaded_file.name.lower().split('.')[-1]
@@ -525,9 +542,7 @@ def main():
             st.error(f"サポートされていないファイル形式です: {file_extension}")
             document_text = None
         
-        if document_text:
-            st.success("✅ テキスト抽出完了")
-            
+        if document_text:            
             # レビュー実行ボタン
             if st.button("🔍 AIレビューを開始", type="primary"):
                 bedrock_client = init_bedrock_client()
@@ -549,7 +564,7 @@ def main():
                                     st.info("ℹ️ 追加の関連情報は見つかりませんでした")
                     
                     # プロンプト作成
-                    prompt = create_review_prompt(document_text, st.session_state.get('custom_prompt', ''), search_results)
+                    prompt = create_review_prompt(document_text, st.session_state.get('custom_prompt', ''), search_results, additional_message)
                     
                     # ストリーミングレスポンス表示
                     with st.spinner("AIレビューを実行中..."):
