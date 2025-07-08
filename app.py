@@ -616,7 +616,7 @@ def main():
     
     
     # タイトルエリア
-    st.markdown('<h1 class="main-title">👨‍💼 部長AI</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">👨‍💼 AI上司</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">あなたの上司に代わって、決裁資料のレビューをします</p>', unsafe_allow_html=True)
     
     # サイドバーでレビュープロンプト設定
